@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="f6eeaf07-ae79-4585-acd3-e0e055c07f82" >
+		<file:connection/>
+	</file:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="7daa7fe2-77fb-4e74-98f9-dc2a16aaa33e" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<file:config name="File_Config1" doc:name="File Config" doc:id="8bacf3a1-8348-4d24-bdea-8f3be64dd7ca" >
+		<file:connection workingDir="C:\MULEESB\FilePOC\Archive" />
+	</file:config>
+	<flow name="f2fFlow" doc:id="4e12edd7-9224-4949-b3c4-5f6ee166f2fd" >
+		<http:listener doc:name="Listener" doc:id="ef3aed3a-301d-4668-9e86-be8b2b226eea" config-ref="HTTP_Listener_config" path="/F2F">
+			<http:response >
+				<http:body ><![CDATA[#[output application/java --- payload]]]></http:body>
+			</http:response>
+		</http:listener>
+		<file:list doc:name="List" doc:id="2991e3ba-0031-4ea5-99f4-bc62b10cfa1a" config-ref="File_Config" directoryPath="C:\MULEESB\FilePOC\Inbox">
+			<file:matcher filenamePattern="*.csv" />
+		</file:list>
+		<logger level="INFO" doc:name="Logger" doc:id="f0742f73-3e31-4a37-bce9-f381280e0d28" message="#[sizeOf(payload)]"/>
+		<set-variable value="#[sizeOf(payload)]" doc:name="Set Variable" doc:id="696f17bf-164a-47b6-810a-ca0fa617aad2" variableName="fCount"/>
+		<choice doc:name="Choice" doc:id="feb93d17-0512-4195-bbf1-0a6e8c2a0c8e" >
+			<when expression="#[vars.fCount &gt; 0]">
+				<logger level="INFO" doc:name="Logger" doc:id="d4c2b607-372e-48af-93ba-f702e4e696d0" message="Files are available"/>
+				<set-variable value="#[payload.typedAttributes.path]" doc:name="Set Variable" doc:id="17b7d650-d53b-4ca4-9cef-6187f7f6777c" variableName="filePath"/>
+				<set-variable value="#[payload.typedAttributes.fileName]" doc:name="Set Variable" doc:id="cb119470-fbfa-45a4-9ee5-5321edb919e0" variableName="fileName" />
+				<logger level="INFO" doc:name="Logger" doc:id="ac7d67a4-af27-471b-abe4-8e563f10951c" message="#[vars.filePath[0]]" />
+				<logger level="INFO" doc:name="Logger" doc:id="85703acc-398e-4f7d-821a-3e83e879a37a" message="#[vars.fileName[0]]"/>
+				<foreach doc:name="For Each" doc:id="ae5fa29e-b436-4de0-869a-0c6e7d938814" collection="#[payload]">
+					<logger level="INFO" doc:name="Logger" doc:id="56cc9b32-14f3-4f75-b806-37bffadcd2a2" message="#[vars.counter - 1]"/>
+					<file:read doc:name="Read" doc:id="2c3527e9-26aa-41ea-a9e4-3349ef395e5f" config-ref="File_Config" path="#[vars.filePath[vars.counter - 1]]" />
+					<logger level="INFO" doc:name="Logger" doc:id="2bf52d13-ac4c-4492-b0be-681418c652c4" message="Read Completed" />
+					<file:write doc:name="Write" doc:id="75277222-e342-4717-9399-1c65fdaf4545" config-ref="File_Config1" path="#[vars.fileName[vars.counter - 1]]" />
+					<set-payload value="Files Processsed Successfully" doc:name="Set Payload" doc:id="51a11b7a-bbcf-4dd1-8897-0c10f1177cab" />
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="350d14d2-5e62-4c31-97b8-5dbff49c6bec" message="No Matching files"/>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
